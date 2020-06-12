@@ -21,7 +21,7 @@ void LCD_DisplayString(unsigned char column, const char* string) {
 void LCD_DisplayCenter(unsigned char row, const char* string) {
     unsigned char pad = (16-strlen(string))/2;
     if (pad >= 0) { // Fails if string is longer than 16
-        LCD_Cursor(15*row+pad);
+        LCD_Cursor(16*row+pad);
         while(*string) {
             LCD_WriteData(*string++);
         }
@@ -69,7 +69,7 @@ void Screen_AddStr(unsigned char pos, const char *string) {
 void Screen_CenterStr(unsigned char row, const char *string) {
     unsigned char pad = (16-strlen(string))/2;
     if (pad >= 0) { // Fails if string is longer than 16
-        unsigned char pos = 15*row+pad;
+        unsigned char pos = 16*row+pad;
         while(*string) {
             updateBuffer[pos++] = *string++;
         }

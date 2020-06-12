@@ -28,7 +28,7 @@
 
 // -----Shared Variables-----
 unsigned char pause = 0, left = 0, gameover = 0, shoots = 0, explode = 0,
-              right = 0, update = 0, playerPos = 0, playerRow = 0, menu = 1;
+              right = 0, update = 1, playerPos = 0, playerRow = 0, menu = 1;
 unsigned short score = 0;
 unsigned char gameBoard[32] = {0};
 // --------------------------
@@ -45,7 +45,7 @@ int ButtonTick(int state) {
         case input:
             if (A0 != old0) {
                 old0 = A0;
-                if (A0 && !gameover && !menu) pause = pause?0:1;
+                if (A0 && !menu) pause = pause?0:1;
             }
             if (A1 != old1) {
                 old1 = A1;
@@ -74,11 +74,29 @@ int ButtonTick(int state) {
 
 enum Game_States { gameMenu, gamePause, gamePlay };
 
-const unsigned char maxPeriod = 6, startDiff = 50;
-unsigned char countPeriod, periods, cycles, difficulty, lastObs, start = 1;
+const unsigned char maxPeriod = 6, startDiff = 50, laserTimeout = 5;
+unsigned char countPeriod, countAnim = 0, periods, cycles, difficulty, lastObs, start = 1, laserTime = 0;
 
 void clearGame(void) {
     memset(gameBoard, 0, 32);
+}
+
+void laserMove(unsigned char pos) {
+    if (gameBoard[pos-1]&LASER_MASK) {
+        if (gameBoard[pos-1]&CAR_MASK) {
+            gameBoard[pos-1] = BOOM_MASK;
+        } else if (gameBoard[pos]&CAR_MASK) {
+            gameBoard[pos] = BOOM_MASK;
+        } else {
+            gameBoard[pos] |= LASER_MASK;
+        }
+    } else gameBoard[pos] &= ~LASER_MASK;
+}
+
+unsigned char replaceMask(unsigned char replace, unsigned char copy, unsigned char mask) {
+    replace &= ~mask;
+    copy &= mask;
+    return (replace | copy);
 }
 
 int GameTick(int state) {
@@ -94,13 +112,15 @@ int GameTick(int state) {
                 lastObs = 5;
                 countPeriod = cycles = 0;
                 clearGame();
-                Screen_Clear();
                 playerRow = left = right = shoots = 0;
                 state = gamePlay;
             }
             break;
         case gamePause:
-            if (!pause) {
+            if (!pause || shoots) {
+                if (!pause && gameover) state = gameMenu;
+                else state = gamePlay;
+                pause = 0;
                 if (gameover) {
                     score = 0;
                     playerPos = 0;
@@ -111,9 +131,7 @@ int GameTick(int state) {
                     lastObs = 5;
                     clearGame();
                 }
-                Screen_Clear();
                 left = right = shoots = 0;
-                state = gamePlay;
             }
             break;
         case gamePlay:
@@ -130,6 +148,7 @@ int GameTick(int state) {
                 }
                 if (gameBoard[playerRow*16+playerPos]&CAR_MASK) {
                     update = 1;
+                    gameBoard[playerRow*16+playerPos] &= ~CAR_MASK;
                     explode = 1;
                 }
                 if (!explode&&(gameBoard[playerRow*16+playerPos]&HOLE_MASK)) {
@@ -139,12 +158,12 @@ int GameTick(int state) {
                     countPeriod = 0;
                     update = 1;
                     for (unsigned char i = 0; i < 15; i++) {
-                        gameBoard[i] |= gameBoard[i+1]&(OBS_MASK+BOOM_MASK);
-                        gameBoard[16+i] |= gameBoard[i+17]&(OBS_MASK+BOOM_MASK);
+                        gameBoard[i] = replaceMask(gameBoard[i], gameBoard[i+1], OBS_MASK+BOOM_MASK);
+                        gameBoard[16+i] = replaceMask(gameBoard[16+i], gameBoard[i+17], OBS_MASK+BOOM_MASK);
                     }
-                    gameBoard[15] &= ~(OBS_MASK+BOOM_MASK); gameBoard[31] &= ~(OBS_MASK+OBS_MASK);
+                    gameBoard[15] &= ~(OBS_MASK+BOOM_MASK); gameBoard[31] &= ~(OBS_MASK+BOOM_MASK);
                     if (!(rand() % (difficulty/lastObs))) {
-                        if (rand() % 2) gameBoard[16*(rand()%2)+15] |= (rand()%2)?CAR_MASK:HOLE_MASK;
+                        gameBoard[16*(rand()%2)+15] |= (rand()%2)?CAR_MASK:HOLE_MASK;
                         lastObs = 1;
                     } else lastObs++;
                     if (cycles++ == 10) {
@@ -154,22 +173,22 @@ int GameTick(int state) {
                     }
                     score += 1*(!explode);//+maxPeriod-periods+((startDiff-difficulty)/5);
                 }
-                if (countPeriod%2) {
+                if ((countAnim = !countAnim)) {
                     update = 1;
+                    laserTime--;
                     for (unsigned char i = 15; i > 0; i--) {
                         if (gameBoard[i]&BOOM_MASK) gameBoard[i] &= ((gameBoard[i]>>BOOM_SHIFT)-1)<<BOOM_SHIFT;
-                        if (gameBoard[i]&CAR_MASK) gameBoard[i] &= (~(LASER_MASK+CAR_MASK)+BOOM_MASK);
-                        else gameBoard[i] |= gameBoard[i-1]&LASER_MASK;
+                        laserMove(i);
                         if (gameBoard[16+i]&BOOM_MASK) gameBoard[16+i] &= ((gameBoard[16+i]>>BOOM_SHIFT)-1)<<BOOM_SHIFT;
-                        if (gameBoard[16+i]&CAR_MASK) gameBoard[16+i] &= (~(LASER_MASK+CAR_MASK)+BOOM_MASK);
-                        else gameBoard[16+i] |= gameBoard[i+15]&LASER_MASK;
+                        laserMove(16+i);
                     }
-                    if (shoots && playerPos < 15) {
+                    if (!laserTime && shoots && playerPos < 15) {
                         gameBoard[16*playerRow+playerPos+1] |= LASER_MASK;
+                        laserTime = laserTimeout;
                         shoots = 0;
                     }
                     if (explode>0) {
-                        if (explode++>3) {
+                        if (explode++>=3) {
                             gameover = pause = 1;
                             state = gamePause;
                             explode = 0;
@@ -228,7 +247,9 @@ int LCDTick(int state) {
                 update = 0;
                 if (menu) {
                     Screen_Clear();
-                    Screen_CenterStr(0, "Press to Start");
+                    Screen_CenterStr(0, "1 Player");
+                    Screen_CenterStr(1, "2 Player");
+                    Screen_AddCh(playerRow*16, CAR1);
                 }else if (gameover && pause) {
                     unsigned char buf[13];
                     Screen_Clear();
