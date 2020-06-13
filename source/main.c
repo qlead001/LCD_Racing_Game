@@ -106,10 +106,13 @@ int GameTick(int state) {
     switch (state) {
         case gameMenu:
             if (menuAnim) {
-                update = 1;
-                if (menuAnim++>=15) {
-                    menuAnim = 0;
-                    state = gamePlay;
+                if ((countAnim = !countAnim)) {
+                    update = 1;
+                    if (menuAnim++>=15) {
+                        menuAnim = countAnim = 0;
+                        left = right = shoots = 0;
+                        state = gamePlay;
+                    }
                 }
             } else if (shoots) {
                 if (start) srand(time(NULL));
@@ -125,14 +128,19 @@ int GameTick(int state) {
                 clearGame();
                 left = right = shoots = 0;
                 menuAnim = 1;
+                update = 1;
             }
             break;
         case gamePause:
             if (!pause || shoots) {
-                if (!pause && gameover) state = gameMenu;
-                else state = gamePlay;
-                pause = 0;
+                if (!pause && gameover) {
+                    state = gameMenu;
+                    playerRow = 0;
+                    menu = 1;
+                    update = 1;
+                } else state = gamePlay;
                 if (gameover) {
+                    if (pause) playerRow = 0;
                     score = 0;
                     playerPos = 0;
                     gameover = 0;
@@ -142,6 +150,7 @@ int GameTick(int state) {
                     lastObs = 5;
                     clearGame();
                 }
+                pause = 0;
                 left = right = shoots = 0;
             }
             break;
@@ -186,7 +195,10 @@ int GameTick(int state) {
                 }
                 if ((countAnim = !countAnim)) {
                     update = 1;
-                    laserTime--;
+                    if (laserTime) {
+                        laserTime--;
+                        shoots = 0;
+                    }
                     for (unsigned char i = 15; i > 0; i--) {
                         if (gameBoard[i]&BOOM_MASK) gameBoard[i] &= ((gameBoard[i]>>BOOM_SHIFT)-1)<<BOOM_SHIFT;
                         laserMove(i);
@@ -261,17 +273,16 @@ int LCDTick(int state) {
                     Screen_CenterStr(0, "1 Player");
                     Screen_CenterStr(1, "2 Player");
                     Screen_AddCh(playerRow*16, CAR1);
-                    Screen_AddCh((!playerRow)*16, emptyChar);
                 } else if (menuAnim) {
                     if (menuAnim==1) {
                         Screen_Clear();
                         if (!playMode) Screen_CenterStr(0, "1 Player");
                         else Screen_CenterStr(1, "2 Player");
+                        Screen_AddCh(playerRow*16, CAR1);
                     } else {
-                        Screen_AddCh(16*playMode+menuAnim, SHOT);
-                        if (menuAnim > 1)
-                            Screen_AddCh(16*playMode+menuAnim-1, emptyChar);
+                        Screen_AddCh(16*playMode+menuAnim-1, emptyChar);
                     }
+                    Screen_AddCh(16*playMode+menuAnim, SHOT);
                 } else if (gameover && pause) {
                     unsigned char buf[13];
                     Screen_Clear();
