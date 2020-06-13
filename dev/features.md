@@ -24,10 +24,10 @@
 * Sprite file for loading custom sprites
 * Dev tools
   * Animation test
-    * make program-anim
+    * `make program-anim`
     * Press A0 to shoot
   * Char test
-    * make program-char
+    * `make program-char`
     * Press A0 to cycle through pages
     * PORTB displays page number
 
