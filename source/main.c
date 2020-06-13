@@ -77,7 +77,7 @@ int ButtonTick(int state) {
 
 enum Game_States { gameMenu, gamePause, gamePlay };
 
-const unsigned char maxPeriod = 6, startDiff = 50, laserTimeout = 5, initObs = 10;
+const unsigned char maxPeriod = 6, startDiff = 50, laserTimeout = 5, initObs = 20;
 unsigned char countPeriod, countAnim = 0, periods, cycles, difficulty, lastObs, start = 1, laserTime = 0;
 
 void clearGame(void) {
@@ -272,6 +272,9 @@ int LCDTick(int state) {
                     Screen_Clear();
                     Screen_CenterStr(0, "1 Player");
                     Screen_CenterStr(1, "2 Player");
+                    // Hacky fix for custom characters not
+                    // rendering immediately after loading
+                    Screen_Refresh();
                     Screen_AddCh(playerRow*16, CAR1);
                 } else if (menuAnim) {
                     if (menuAnim==1) {

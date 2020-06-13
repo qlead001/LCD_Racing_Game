@@ -31,8 +31,6 @@
 
 ## Unintended
 
-* Player does not properly appear in menu
-before pressing the swap row button
 * Player may be able to phase through
 obstacles sometimes
 * Commented out code in source/lcd.c
