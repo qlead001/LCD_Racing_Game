@@ -20,15 +20,18 @@
 #endif
 
 #define CAR_MASK 1
+#define HEART_MASK 1
 #define HOLE_MASK 2
+#define BOLT_MASK 1
 #define OBS_MASK 3
+#define POWERUP_MASK 3
 #define LASER_MASK 4
 #define BOOM_MASK 24
 #define BOOM_SHIFT 3
 
 // -----Shared Variables-----
 unsigned char pause = 0, left = 0, gameover = 0, shoots = 0, explode = 0,
-              right = 0, update = 1, playerPos = 0, playerRow = 0, menu = 1;
+              right = 0, update = 1, playerPos = 0, playerRow = 0, menu = 1, menuAnim = 0, playMode;
 unsigned short score = 0;
 unsigned char gameBoard[32] = {0};
 // --------------------------
@@ -49,7 +52,7 @@ int ButtonTick(int state) {
             }
             if (A1 != old1) {
                 old1 = A1;
-                if (A1 && !explode) {
+                if (A1 && !explode && !menuAnim) {
                     playerRow = playerRow?0:1;
                     update = 1;
                 }
@@ -102,8 +105,16 @@ unsigned char replaceMask(unsigned char replace, unsigned char copy, unsigned ch
 int GameTick(int state) {
     switch (state) {
         case gameMenu:
-            if (shoots) {
+            if (menuAnim) {
+                update = 1;
+                if (menuAnim++>=15) {
+                    menuAnim = 0;
+                    state = gamePlay;
+                }
+            } else if (shoots) {
                 if (start) srand(time(NULL));
+                playMode = playerRow;
+                SetPlayMode(playMode);
                 score = 0;
                 playerPos = 0;
                 gameover = start = menu = 0;
@@ -112,8 +123,8 @@ int GameTick(int state) {
                 lastObs = 5;
                 countPeriod = cycles = 0;
                 clearGame();
-                playerRow = left = right = shoots = 0;
-                state = gamePlay;
+                left = right = shoots = 0;
+                menuAnim = 1;
             }
             break;
         case gamePause:
@@ -250,7 +261,18 @@ int LCDTick(int state) {
                     Screen_CenterStr(0, "1 Player");
                     Screen_CenterStr(1, "2 Player");
                     Screen_AddCh(playerRow*16, CAR1);
-                }else if (gameover && pause) {
+                    Screen_AddCh((!playerRow)*16, emptyChar);
+                } else if (menuAnim) {
+                    if (menuAnim==1) {
+                        Screen_Clear();
+                        if (!playMode) Screen_CenterStr(0, "1 Player");
+                        else Screen_CenterStr(1, "2 Player");
+                    } else {
+                        Screen_AddCh(16*playMode+menuAnim, SHOT);
+                        if (menuAnim > 1)
+                            Screen_AddCh(16*playMode+menuAnim-1, emptyChar);
+                    }
+                } else if (gameover && pause) {
                     unsigned char buf[13];
                     Screen_Clear();
                     Screen_CenterStr(0, "Game Over!");
