@@ -77,7 +77,7 @@ int ButtonTick(int state) {
 
 enum Game_States { gameMenu, gamePause, gamePlay };
 
-const unsigned char maxPeriod = 6, startDiff = 50, laserTimeout = 5;
+const unsigned char maxPeriod = 6, startDiff = 50, laserTimeout = 5, initObs = 10;
 unsigned char countPeriod, countAnim = 0, periods, cycles, difficulty, lastObs, start = 1, laserTime = 0;
 
 void clearGame(void) {
@@ -123,7 +123,7 @@ int GameTick(int state) {
                 gameover = start = menu = 0;
                 periods = maxPeriod;
                 difficulty = startDiff;
-                lastObs = 5;
+                lastObs = initObs;
                 countPeriod = cycles = 0;
                 clearGame();
                 left = right = shoots = 0;
@@ -147,7 +147,7 @@ int GameTick(int state) {
                     periods = maxPeriod;
                     difficulty = startDiff;
                     countPeriod = cycles = 0;
-                    lastObs = 5;
+                    lastObs = initObs;
                     clearGame();
                 }
                 pause = 0;
